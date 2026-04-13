@@ -23,7 +23,11 @@ public final class LogicAuthAssembly: Assembly {
   public func assemble(container: Container) {
 
     container.register(PinStorageProvider.self) { r in
+      #if targetEnvironment(simulator)
+      SimulatorPinStorageProvider()
+      #else
       KeychainPinStorageProvider(keyChainController: r.force(KeyChainController.self))
+      #endif
     }
     .inObjectScope(ObjectScope.graph)
 

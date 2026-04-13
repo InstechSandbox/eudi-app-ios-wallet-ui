@@ -16,6 +16,7 @@
 import Foundation
 import logic_business
 import EudiWalletKit
+import OpenID4VP
 import Security
 
 protocol WalletKitConfig: Sendable {
@@ -88,16 +89,20 @@ struct WalletKitConfigImpl: WalletKitConfig {
 
   var issuersConfig: [String: VciConfig] {
 
+    let authFlowRedirectionURI = URL(string: "eu.europa.ec.euidi://authorization")!
+
     let openId4VciConfigurations: [VciConfig] = {
+      let hostedConfigurations: [VciConfig]
+
       switch configLogic.appBuildVariant {
       case .DEMO:
-        return [
+        hostedConfigurations = [
           .init(
             config: .init(
               credentialIssuerURL: "https://issuer.eudiw.dev",
               clientId: "wallet-dev",
               keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: URL(string: "eu.europa.ec.euidi://authorization")!,
+              authFlowRedirectionURI: authFlowRedirectionURI,
               requirePAR: true,
               requireDpop: true,
               cacheIssuerMetadata: true
@@ -109,7 +114,7 @@ struct WalletKitConfigImpl: WalletKitConfig {
               credentialIssuerURL: "https://issuer-backend.eudiw.dev",
               clientId: "wallet-dev",
               keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: URL(string: "eu.europa.ec.euidi://authorization")!,
+              authFlowRedirectionURI: authFlowRedirectionURI,
               requirePAR: true,
               requireDpop: true,
               cacheIssuerMetadata: true
@@ -118,13 +123,13 @@ struct WalletKitConfigImpl: WalletKitConfig {
           )
         ]
       case .DEV:
-        return [
+        hostedConfigurations = [
           .init(
             config: .init(
               credentialIssuerURL: "https://ec.dev.issuer.eudiw.dev",
               clientId: "wallet-dev",
               keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: URL(string: "eu.europa.ec.euidi://authorization")!,
+              authFlowRedirectionURI: authFlowRedirectionURI,
               requirePAR: true,
               requireDpop: true,
               cacheIssuerMetadata: true
@@ -136,7 +141,7 @@ struct WalletKitConfigImpl: WalletKitConfig {
               credentialIssuerURL: "https://dev.issuer-backend.eudiw.dev",
               clientId: "wallet-dev",
               keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: URL(string: "eu.europa.ec.euidi://authorization")!,
+              authFlowRedirectionURI: authFlowRedirectionURI,
               requirePAR: true,
               requireDpop: true,
               cacheIssuerMetadata: true
@@ -145,6 +150,24 @@ struct WalletKitConfigImpl: WalletKitConfig {
           )
         ]
       }
+
+      guard let localIssuerUrl = configLogic.localIssuerUrl?.absoluteString else {
+        return hostedConfigurations
+      }
+
+      return hostedConfigurations + [
+        .init(
+          config: .init(
+            credentialIssuerURL: localIssuerUrl,
+            clientId: configLogic.localIssuerClientId,
+            authFlowRedirectionURI: authFlowRedirectionURI,
+            requirePAR: false,
+            requireDpop: true,
+            cacheIssuerMetadata: true
+          ),
+          order: 2
+        )
+      ]
     }()
 
     return openId4VciConfigurations.reduce(
@@ -162,11 +185,32 @@ struct WalletKitConfigImpl: WalletKitConfig {
   }
 
   var vpConfig: OpenId4VpConfiguration {
-    .init(clientIdSchemes: [.x509SanDns, .x509Hash])
+    var clientIdSchemes: [ClientIdScheme] = [.x509SanDns, .x509Hash]
+
+    if let clientId = configLogic.localVerifierClientId,
+       let verifierApiUri = configLogic.localVerifierUrl?.absoluteString {
+      clientIdSchemes.append(
+        .preregistered(
+          [
+            PreregisteredClient(
+              clientId: clientId,
+              legalName: configLogic.localVerifierUrl?.host ?? clientId,
+              jarSigningAlg: JWSAlgorithm(.ES256),
+              jwkSetSource: WebKeySource.fetchByReference(
+                url: URL(string: "\(verifierApiUri)/wallet/public-keys.json")!
+              )
+            )
+          ]
+        )
+      )
+    }
+
+    return .init(clientIdSchemes: clientIdSchemes)
   }
 
   var trustedReaderRootCertificates: [x5chain] {
     let certificates = [
+      "pidissuerca_local_ut",
       "pidissuerca02_cz",
       "pidissuerca02_ee",
       "pidissuerca02_eu",
@@ -247,13 +291,15 @@ struct WalletKitConfigImpl: WalletKitConfig {
           numberOfCredentials: 1
         ),
         documentSpecificRules: [
+          // Local verifier presentation currently crashes if batched PID credentials
+          // share the same document id during OpenID4VP setup.
           DocumentTypeIdentifier.mDocPid: DocumentIssuanceRule(
             policy: .oneTimeUse,
-            numberOfCredentials: 10
+            numberOfCredentials: 1
           ),
           DocumentTypeIdentifier.sdJwtPid: DocumentIssuanceRule(
             policy: .oneTimeUse,
-            numberOfCredentials: 10
+            numberOfCredentials: 1
           )
         ],
         reIssuanceRule: ReIssuanceRule(
@@ -269,13 +315,15 @@ struct WalletKitConfigImpl: WalletKitConfig {
           numberOfCredentials: 1
         ),
         documentSpecificRules: [
+          // Local verifier presentation currently crashes if batched PID credentials
+          // share the same document id during OpenID4VP setup.
           DocumentTypeIdentifier.mDocPid: DocumentIssuanceRule(
             policy: .oneTimeUse,
-            numberOfCredentials: 60
+            numberOfCredentials: 1
           ),
           DocumentTypeIdentifier.sdJwtPid: DocumentIssuanceRule(
             policy: .oneTimeUse,
-            numberOfCredentials: 60
+            numberOfCredentials: 1
           )
         ],
         reIssuanceRule: ReIssuanceRule(

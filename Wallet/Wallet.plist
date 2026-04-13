@@ -31,6 +31,18 @@
 	<string>$(CHANGELOG_URL)</string>
 	<key>Core User Auth</key>
 	<string>$(CORE_USER_AUTH)</string>
+	<key>Local Issuer Client Id</key>
+	<string>$(LOCAL_ISSUER_CLIENT_ID)</string>
+	<key>Local Issuer Url</key>
+	<string>$(LOCAL_ISSUER_URL)</string>
+	<key>Local Trusted Hosts</key>
+	<string>$(LOCAL_TRUSTED_HOSTS)</string>
+	<key>Local Wallet Attestation Url</key>
+	<string>$(LOCAL_WALLET_ATTESTATION_URL)</string>
+	<key>Local Verifier Client Id</key>
+	<string>$(LOCAL_VERIFIER_CLIENT_ID)</string>
+	<key>Local Verifier Url</key>
+	<string>$(LOCAL_VERIFIER_URL)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>Team ID</key>

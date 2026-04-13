@@ -299,6 +299,7 @@
 				F14907B42ABAF54B00DDFE56 /* Sources */,
 				F14907B52ABAF54B00DDFE56 /* Frameworks */,
 				F14907B62ABAF54B00DDFE56 /* Resources */,
+				F035C0022F7000010098E43 /* Copy Optional Local Trust Roots */,
 				F09E1EA52AC3468300779C25 /* Swift Lint */,
 				9F8701D12F6BE5BC00A865A9 /* Embed ExtensionKit Extensions */,
 			);
@@ -399,6 +400,25 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		F035C0022F7000010098E43 /* Copy Optional Local Trust Roots */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Optional Local Trust Roots";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "LOCAL_CERT=\"$SRCROOT/Wallet/Certificate/pidissuerca_local_ut.der\"\nDEST_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nif [ -f \"$LOCAL_CERT\" ]; then\n  mkdir -p \"$DEST_DIR\"\n  cp \"$LOCAL_CERT\" \"$DEST_DIR/pidissuerca_local_ut.der\"\nfi\n";
+		};
 		F09E1EA52AC3468300779C25 /* Swift Lint */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

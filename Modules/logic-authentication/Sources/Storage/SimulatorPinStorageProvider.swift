@@ -13,28 +13,25 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
-import logic_business
-import Swinject
+import Foundation
 
-public final class LogicApiAssembly: Assembly {
+#if targetEnvironment(simulator)
+final class SimulatorPinStorageProvider: PinStorageProvider {
 
-  public init() {}
+  private enum Constants {
+    static let pinKey = "eu.europa.ec.euidi.simulator.devicePin"
+  }
 
-  public func assemble(container: Container) {
+  func retrievePin() -> String? {
+    UserDefaults.standard.string(forKey: Constants.pinKey)
+  }
 
-    container.register(NetworkSessionProvider.self) { r in
-      NetworkSessionProviderImpl(configLogic: r.force(ConfigLogic.self))
-    }
-    .inObjectScope(ObjectScope.container)
+  func setPin(with pin: String) {
+    UserDefaults.standard.set(pin, forKey: Constants.pinKey)
+  }
 
-    container.register(NetworkManager.self) { r in
-      NetworkManagerImpl(with: r.force(NetworkSessionProvider.self))
-    }
-    .inObjectScope(ObjectScope.transient)
-
-    container.register(WalletAttestationRepository.self) { r in
-      WalletAttestationRepositoryImpl(networkManager: r.force(NetworkManager.self))
-    }
-    .inObjectScope(ObjectScope.transient)
+  func isPinValid(with pin: String) -> Bool {
+    retrievePin() == pin
   }
 }
+#endif

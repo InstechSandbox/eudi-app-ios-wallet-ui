@@ -25,12 +25,7 @@ public extension Bundle {
       return ""
     }
 
-    // Check if we're in an extension by looking for common extension bundle patterns
-    // Extensions typically have bundle IDs like: main.app.bundle.id.ExtensionName
-    // We detect this by checking if the bundle path contains ".appex" or if the bundle ID
-    // has more components than expected (indicating it's an extension)
-
-    let isExtension = Bundle.main.bundlePath.contains(".appex")
+    let isExtension = isExtensionBundle()
 
     if isExtension {
       // In an extension, derive the main app bundle ID by dropping the last component
@@ -58,6 +53,10 @@ public extension Bundle {
   /// If no items exist, it constructs the access group from the bundle identifier.
   /// Always returns a non-nil value to ensure compatibility with APIs that require it.
   static func getKeychainAccessGroup() -> String {
+    #if targetEnvironment(simulator)
+    return ""
+    #else
+
     // Try to read ANY existing keychain item to get the access group
     // This is safer than trying to create an item, which requires proper entitlements
     let query: [String: Any] = [
@@ -100,5 +99,26 @@ public extension Bundle {
 
     // Fallback: return the team ID and main app bundle ID as the access group
     return "\("Team ID".valueFromBundle).\(mainAppBundleID)"
+    #endif
+  }
+
+  private static func isExtensionBundle() -> Bool {
+    if Bundle.main.bundlePath.contains(".appex") || Bundle.main.bundleURL.pathExtension == "appex" {
+      return true
+    }
+
+    if Bundle.main.object(forInfoDictionaryKey: "EXAppExtensionAttributes") != nil {
+      return true
+    }
+
+    if Bundle.main.object(forInfoDictionaryKey: "NSExtension") != nil {
+      return true
+    }
+
+    guard let bundleID = Bundle.main.bundleIdentifier else {
+      return false
+    }
+
+    return bundleID.hasSuffix(".EudiReferenceWalletIDProvider")
   }
 }

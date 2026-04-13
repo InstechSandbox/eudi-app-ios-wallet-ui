@@ -15,5 +15,5 @@
  */
 public struct KeyChainConfig {
   public let documentStorageServiceName: String
-  public let keychainAccessGroup: String
+  public let keychainAccessGroup: String?
 }

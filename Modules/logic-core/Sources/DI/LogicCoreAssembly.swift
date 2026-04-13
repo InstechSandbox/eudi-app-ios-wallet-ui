@@ -33,11 +33,15 @@ public final class LogicCoreAssembly: Assembly {
     .inObjectScope(ObjectScope.container)
 
     container.register(DocumentRegistrationManager.self) { _ in
-      if #available(iOS 26.0, *) {
-        return DocumentRegistrationManagerImpl()
-      } else {
+      #if targetEnvironment(simulator)
         return DocumentRegistrationManagerNoOp()
-      }
+      #else
+        if #available(iOS 26.0, *) {
+          return DocumentRegistrationManagerImpl()
+        } else {
+          return DocumentRegistrationManagerNoOp()
+        }
+      #endif
     }
     .inObjectScope(ObjectScope.container)
 

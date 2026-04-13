@@ -52,6 +52,36 @@ public protocol ConfigLogic: Sendable {
   var changelogUrl: URL? { get }
 
   /**
+   * Local issuer override.
+   */
+  var localIssuerUrl: URL? { get }
+
+  /**
+   * Local issuer client id.
+   */
+  var localIssuerClientId: String { get }
+
+  /**
+   * Local wallet attestation override.
+   */
+  var localWalletAttestationUrl: URL? { get }
+
+  /**
+   * Local verifier override for preregistered OpenID4VP flows.
+   */
+  var localVerifierUrl: URL? { get }
+
+  /**
+   * Local verifier preregistered client id.
+   */
+  var localVerifierClientId: String? { get }
+
+  /**
+   * Hosts allowed to use local self-signed TLS.
+   */
+  var localTlsTrustedHosts: [String] { get }
+
+  /**
    * Wallet requires PID Activation
    */
   var forcePidActivation: Bool { get }
@@ -88,6 +118,60 @@ struct ConfigLogicImpl: ConfigLogic {
       return nil
     }
     return url
+  }
+
+  public var localIssuerUrl: URL? {
+    guard
+      let value = getBundleNullableValue(key: "Local Issuer Url"),
+      let url = URL(string: value)
+    else {
+      return nil
+    }
+    return url
+  }
+
+  public var localIssuerClientId: String {
+    getBundleNullableValue(key: "Local Issuer Client Id") ?? "wallet-dev-local"
+  }
+
+  public var localWalletAttestationUrl: URL? {
+    guard
+      let value = getBundleNullableValue(key: "Local Wallet Attestation Url"),
+      let url = URL(string: value)
+    else {
+      return nil
+    }
+    return url
+  }
+
+  public var localVerifierUrl: URL? {
+    guard
+      let value = getBundleNullableValue(key: "Local Verifier Url"),
+      let url = URL(string: value)
+    else {
+      return nil
+    }
+    return url
+  }
+
+  public var localVerifierClientId: String? {
+    getBundleNullableValue(key: "Local Verifier Client Id")
+  }
+
+  public var localTlsTrustedHosts: [String] {
+    var trustedHosts = Set<String>()
+
+    [localIssuerUrl?.host, localWalletAttestationUrl?.host, localVerifierUrl?.host]
+      .compactMap { $0?.lowercased() }
+      .forEach { trustedHosts.insert($0) }
+
+    getBundleNullableValue(key: "Local Trusted Hosts")?
+      .split(separator: ",")
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+      .filter { !$0.isEmpty }
+      .forEach { trustedHosts.insert($0) }
+
+    return trustedHosts.sorted()
   }
 
   var forcePidActivation: Bool {

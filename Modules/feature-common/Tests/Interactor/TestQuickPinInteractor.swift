@@ -38,7 +38,7 @@ final class TestQuickPinInteractor: EudiTest {
   func testSetPin_WhenNewPinIsSet_ThenVerifyAtLeastOnce() async {
     
     // Given
-    let pin = "1234"
+    let pin = "12 34"
     stub(pinStorageController) { mock in
       when(mock.setPin(with: any())).thenDoNothing()
     }
@@ -47,16 +47,16 @@ final class TestQuickPinInteractor: EudiTest {
     await interactor.setPin(newPin: pin)
     
     // Then
-    verify(pinStorageController).setPin(with: pin)
+    verify(pinStorageController).setPin(with: "1234")
     
   }
   
   func testIsPinValid_WhenStoredAndProvidedPinsMatch_ThenReturnPartialStateSuccess() async {
     
     // Given
-    let pin = "1234"
+    let pin = "12 34"
     stub(pinStorageController) { mock in
-      when(mock.isPinValid(with: any())).thenReturn(true)
+      when(mock.retrievePin()).thenReturn("1234")
     }
     
     // When
@@ -74,9 +74,9 @@ final class TestQuickPinInteractor: EudiTest {
   func testIsPinValid_WhenStoredAndProvidedPinsDoNotMatch_ThenReturnPartialStateFailure() async {
     
     // Given
-    let pin = "1234"
+    let pin = "12 35"
     stub(pinStorageController) { mock in
-      when(mock.isPinValid(with: any())).thenReturn(false)
+      when(mock.retrievePin()).thenReturn("1234")
     }
     
     // When
@@ -94,7 +94,7 @@ final class TestQuickPinInteractor: EudiTest {
   func testHasPin_WhenThereIsAStoredPin_ThenReturnTrue() async {
     
     // Given
-    let pin = "1234"
+    let pin = "12 34"
     stub(pinStorageController) { mock in
       when(mock.retrievePin()).thenReturn(pin)
     }
@@ -123,12 +123,10 @@ final class TestQuickPinInteractor: EudiTest {
   func testChangePin_WhenCurrentPinIsValid_ThenReturnPartialStateSuccess() async {
     
     // Given
-    let newPin = "4321"
-    let currentPin = "1234"
+    let newPin = "43 21"
+    let currentPin = "12 34"
     stub(pinStorageController) { mock in
-      when(mock.isPinValid(with: any())).thenReturn(true)
-    }
-    stub(pinStorageController) { mock in
+      when(mock.retrievePin()).thenReturn("1234")
       when(mock.setPin(with: any())).thenDoNothing()
     }
     
@@ -136,7 +134,7 @@ final class TestQuickPinInteractor: EudiTest {
     let state = await interactor.changePin(currentPin: currentPin, newPin: newPin)
     
     // Then
-    verify(pinStorageController).setPin(with: newPin)
+    verify(pinStorageController).setPin(with: "4321")
     
     switch state {
     case .success:
@@ -151,9 +149,7 @@ final class TestQuickPinInteractor: EudiTest {
     // Given
     let newPin = "4321"
     stub(pinStorageController) { mock in
-      when(mock.isPinValid(with: any())).thenReturn(false)
-    }
-    stub(pinStorageController) { mock in
+      when(mock.retrievePin()).thenReturn("1111")
       when(mock.setPin(with: any())).thenDoNothing()
     }
     

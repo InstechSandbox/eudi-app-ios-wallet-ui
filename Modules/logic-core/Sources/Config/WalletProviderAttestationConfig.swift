@@ -31,7 +31,11 @@ final class WalletProviderAttestationConfigImpl: WalletProviderAttestationConfig
   }
 
   var walletProviderAttestationUrl: String {
-    switch configLogic.appBuildVariant {
+    if let localWalletAttestationUrl = configLogic.localWalletAttestationUrl?.absoluteString {
+      return localWalletAttestationUrl
+    }
+
+    return switch configLogic.appBuildVariant {
     case .DEMO:
       "https://wallet-provider.eudiw.dev"
     case .DEV:

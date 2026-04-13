@@ -13,6 +13,7 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
+import Foundation
 import logic_authentication
 
 public enum QuickPinPartialState: Sendable {
@@ -36,7 +37,9 @@ final actor QuickPinInteractorImpl: QuickPinInteractor {
   }
 
   public func setPin(newPin: String) {
-    pinStorageController.setPin(with: newPin)
+    let normalizedPin = newPin.normalizedQuickPin
+    pinStorageController.setPin(with: normalizedPin)
+    debugLogStoredPinUpdate(normalizedPin)
   }
 
   public func isPinValid(pin: String) -> QuickPinPartialState {
@@ -57,10 +60,50 @@ final actor QuickPinInteractorImpl: QuickPinInteractor {
   }
 
   public func hasPin() -> Bool {
-    pinStorageController.retrievePin()?.isEmpty == false
+    pinStorageController.retrievePin()?.normalizedQuickPin.isEmpty == false
   }
 
   private func isCurrentPinValid(pin: String) -> Bool {
-    pinStorageController.isPinValid(with: pin)
+    let normalizedInput = pin.normalizedQuickPin
+    let normalizedStoredPin = pinStorageController.retrievePin()?.normalizedQuickPin
+    let isMatch = normalizedStoredPin == normalizedInput
+    debugLogPinValidationAttempt(input: normalizedInput, stored: normalizedStoredPin, isMatch: isMatch)
+    return isMatch
+  }
+
+  private func debugLogStoredPinUpdate(_ normalizedPin: String) {
+    #if DEBUG && targetEnvironment(simulator)
+    NSLog(
+      "[QuickPinDebug] Stored simulator PIN updated length=%ld fingerprint=%@",
+      normalizedPin.count,
+      normalizedPin.debugFingerprint
+    )
+    #endif
+  }
+
+  private func debugLogPinValidationAttempt(input: String, stored: String?, isMatch: Bool) {
+    #if DEBUG && targetEnvironment(simulator)
+    NSLog(
+      "[QuickPinDebug] Validate simulator PIN inputLength=%ld inputFingerprint=%@ storedLength=%ld storedFingerprint=%@ match=%@",
+      input.count,
+      input.debugFingerprint,
+      stored?.count ?? 0,
+      stored?.debugFingerprint ?? "<nil>",
+      isMatch ? "true" : "false"
+    )
+    #endif
+  }
+}
+
+private extension String {
+  var normalizedQuickPin: String {
+    self.compactMap(\.wholeNumberValue).map(String.init).joined()
+  }
+
+  var debugFingerprint: String {
+    let checksum = self.utf8.reduce(UInt64(5381)) { partial, byte in
+      ((partial << 5) &+ partial) &+ UInt64(byte)
+    }
+    return String(checksum, radix: 16, uppercase: false)
   }
 }

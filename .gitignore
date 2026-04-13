@@ -90,4 +90,7 @@ xcov_output
 #DSStore
 .DS_Store
 
+# Local mdoc trust root copied into the app bundle only for local demo builds.
+Wallet/Certificate/pidissuerca_local_ut.der
+
 # End of https://www.toptal.com/developers/gitignore/api/swift

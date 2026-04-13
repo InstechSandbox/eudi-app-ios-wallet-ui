@@ -161,8 +161,11 @@ public struct PinTextFieldView: View {
       }
     )
     .onChange(of: numericText) { _, newValue in
-      self.numericText = newValue
-      self.currentIndex = newValue.count > maxDigits ? maxDigits : newValue.count
+      let sanitizedValue = newValue.normalizedNumericInput(maxDigits: maxDigits)
+      if self.numericText != sanitizedValue {
+        self.numericText = sanitizedValue
+      }
+      self.currentIndex = sanitizedValue.count
       self.submitPin()
 
       for index in (0..<maxDigits) {
@@ -203,10 +206,17 @@ public struct PinTextFieldView: View {
 
 private extension String {
 
+  func normalizedNumericInput(maxDigits: Int) -> String {
+    self.compactMap(\.wholeNumberValue)
+      .prefix(maxDigits)
+      .map(String.init)
+      .joined()
+  }
+
   var digits: [Int] {
     var result = [Int]()
     for char in self {
-      if let number = Int(String(char)) {
+      if let number = char.wholeNumberValue {
         result.append(number)
       }
     }

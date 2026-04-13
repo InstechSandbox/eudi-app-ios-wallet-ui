@@ -14,6 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 import Foundation
+import logic_business
 
 public protocol NetworkSessionProvider: Sendable {
   var urlSession: URLSession { get }
@@ -22,8 +23,49 @@ public protocol NetworkSessionProvider: Sendable {
 final class NetworkSessionProviderImpl: NetworkSessionProvider {
 
   let urlSession: URLSession
+  private let sessionDelegate: URLSessionDelegate?
 
-  init() {
-    self.urlSession = URLSession.shared
+  init(configLogic: ConfigLogic) {
+    let trustedHosts = Set(configLogic.localTlsTrustedHosts)
+
+    guard !trustedHosts.isEmpty else {
+      self.sessionDelegate = nil
+      self.urlSession = URLSession.shared
+      return
+    }
+
+    let sessionDelegate = LocalTLSTrustDelegate(trustedHosts: trustedHosts)
+    self.sessionDelegate = sessionDelegate
+    self.urlSession = URLSession(
+      configuration: .default,
+      delegate: sessionDelegate,
+      delegateQueue: nil
+    )
+  }
+}
+
+private final class LocalTLSTrustDelegate: NSObject, URLSessionDelegate {
+
+  private let trustedHosts: Set<String>
+
+  init(trustedHosts: Set<String>) {
+    self.trustedHosts = trustedHosts
+  }
+
+  func urlSession(
+    _ session: URLSession,
+    didReceive challenge: URLAuthenticationChallenge,
+    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+  ) {
+    guard
+      challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+      let serverTrust = challenge.protectionSpace.serverTrust,
+      trustedHosts.contains(challenge.protectionSpace.host.lowercased())
+    else {
+      completionHandler(.performDefaultHandling, nil)
+      return
+    }
+
+    completionHandler(.useCredential, URLCredential(trust: serverTrust))
   }
 }

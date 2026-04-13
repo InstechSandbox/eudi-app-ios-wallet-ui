@@ -17,6 +17,7 @@ import logic_business
 import SwiftUI
 import logic_storage
 import logic_api
+import MdocSecurity18013
 
 private enum KeyIdentifier: String, KeyChainWrapper {
   public var value: String {
@@ -130,21 +131,45 @@ final actor WalletKitControllerImpl: WalletKitController {
     self.failedReIssuedDocStorageController = failedReIssuedDocStorageController
     self.documentRegistrationManager = documentRegistrationManager
 
-    guard let walletKit = try? EudiWallet(
-      eudiWalletConfig: EudiWalletConfiguration(
-        serviceName: configLogic.keyChainConfig.documentStorageServiceName,
-        accessGroup: configLogic.keyChainConfig.keychainAccessGroup,
-        userAuthenticationRequired: walletKitConfig.userAuthenticationRequired,
-        trustedReaderRootCertificates: walletKitConfig.trustedReaderRootCertificates,
-        deviceAuthMethod: .deviceSignature,
-        uiCulture: Locale.current.systemLanguageCode,
-        logFileName: walletKitConfig.logFileName
-      ),
-      openID4VpConfig: walletKitConfig.vpConfig,
-      openID4VciConfigurations: walletKitConfig.issuersConfig.mapValues { $0.config },
-      networking: networkSessionProvider.urlSession,
-      transactionLogger: walletKitConfig.transactionLogger
-    ) else {
+    let keychainAccessGroup = {
+      let accessGroup = configLogic.keyChainConfig.keychainAccessGroup
+      return accessGroup?.isEmpty == true ? nil : accessGroup
+    }()
+
+    let walletConfiguration = EudiWalletConfiguration(
+      serviceName: configLogic.keyChainConfig.documentStorageServiceName,
+      accessGroup: keychainAccessGroup,
+      userAuthenticationRequired: walletKitConfig.userAuthenticationRequired,
+      trustedReaderRootCertificates: walletKitConfig.trustedReaderRootCertificates,
+      deviceAuthMethod: .deviceSignature,
+      uiCulture: Locale.current.systemLanguageCode,
+      logFileName: walletKitConfig.logFileName
+    )
+
+    let walletKit: EudiWallet?
+
+    #if targetEnvironment(simulator)
+      let secureKeyStorage = SimulatorSecureKeyStorage()
+      walletKit = try? EudiWallet(
+        eudiWalletConfig: walletConfiguration,
+        storageService: SimulatorDataStorageService(),
+        openID4VpConfig: walletKitConfig.vpConfig,
+        openID4VciConfigurations: walletKitConfig.issuersConfig.mapValues { $0.config },
+        networking: networkSessionProvider.urlSession,
+        secureAreas: [SoftwareSecureArea.create(storage: secureKeyStorage)],
+        transactionLogger: walletKitConfig.transactionLogger
+      )
+    #else
+      walletKit = try? EudiWallet(
+        eudiWalletConfig: walletConfiguration,
+        openID4VpConfig: walletKitConfig.vpConfig,
+        openID4VciConfigurations: walletKitConfig.issuersConfig.mapValues { $0.config },
+        networking: networkSessionProvider.urlSession,
+        transactionLogger: walletKitConfig.transactionLogger
+      )
+    #endif
+
+    guard let walletKit else {
       fatalError("Unable to Initialize WalletKit")
     }
 
