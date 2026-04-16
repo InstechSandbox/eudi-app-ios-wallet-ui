@@ -6,6 +6,10 @@
 	<string>$(BUILD_TYPE)</string>
 	<key>Build Variant</key>
 	<string>$(BUILD_VARIANT)</string>
+	<key>Issuer Frontend Url</key>
+	<string>$(ISSUER_FRONTEND_URL)</string>
+	<key>Issuer Backend Url</key>
+	<string>$(ISSUER_BACKEND_URL)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

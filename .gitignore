@@ -76,6 +76,7 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 .env.demo
 .env.dev
+Wallet/Config/WalletLocalOverrides.xcconfig
 *.p8
 
 # Code Injection

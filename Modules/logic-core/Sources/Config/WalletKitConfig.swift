@@ -69,6 +69,11 @@ protocol WalletKitConfig: Sendable {
 
 struct WalletKitConfigImpl: WalletKitConfig {
 
+  private struct IssuerConfiguration {
+    let credentialIssuerURL: String
+    let order: Int
+  }
+
   let configLogic: ConfigLogic
   let transactionLoggerImpl: TransactionLogger
   let walletKitAttestationProvider: WalletKitAttestationProvider
@@ -88,74 +93,25 @@ struct WalletKitConfigImpl: WalletKitConfig {
   }
 
   var issuersConfig: [String: VciConfig] {
-
     let authFlowRedirectionURI = URL(string: "eu.europa.ec.euidi://authorization")!
+    let hostedConfigurations = issuerConfigurations.map { issuerConfiguration in
+      VciConfig(
+        config: .init(
+          credentialIssuerURL: issuerConfiguration.credentialIssuerURL,
+          clientId: "wallet-dev",
+          keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
+          authFlowRedirectionURI: authFlowRedirectionURI,
+          requirePAR: true,
+          requireDpop: true,
+          cacheIssuerMetadata: true
+        ),
+        order: issuerConfiguration.order
+      )
+    }
 
-    let openId4VciConfigurations: [VciConfig] = {
-      let hostedConfigurations: [VciConfig]
-
-      switch configLogic.appBuildVariant {
-      case .DEMO:
-        hostedConfigurations = [
-          .init(
-            config: .init(
-              credentialIssuerURL: "https://issuer.eudiw.dev",
-              clientId: "wallet-dev",
-              keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: authFlowRedirectionURI,
-              requirePAR: true,
-              requireDpop: true,
-              cacheIssuerMetadata: true
-            ),
-            order: 1
-          ),
-          .init(
-            config: .init(
-              credentialIssuerURL: "https://issuer-backend.eudiw.dev",
-              clientId: "wallet-dev",
-              keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: authFlowRedirectionURI,
-              requirePAR: true,
-              requireDpop: true,
-              cacheIssuerMetadata: true
-            ),
-            order: 0
-          )
-        ]
-      case .DEV:
-        hostedConfigurations = [
-          .init(
-            config: .init(
-              credentialIssuerURL: "https://ec.dev.issuer.eudiw.dev",
-              clientId: "wallet-dev",
-              keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: authFlowRedirectionURI,
-              requirePAR: true,
-              requireDpop: true,
-              cacheIssuerMetadata: true
-            ),
-            order: 1
-          ),
-          .init(
-            config: .init(
-              credentialIssuerURL: "https://dev.issuer-backend.eudiw.dev",
-              clientId: "wallet-dev",
-              keyAttestationsConfig: .init(walletAttestationsProvider: walletKitAttestationProvider),
-              authFlowRedirectionURI: authFlowRedirectionURI,
-              requirePAR: true,
-              requireDpop: true,
-              cacheIssuerMetadata: true
-            ),
-            order: 0
-          )
-        ]
-      }
-
-      guard let localIssuerUrl = configLogic.localIssuerUrl?.absoluteString else {
-        return hostedConfigurations
-      }
-
-      return hostedConfigurations + [
+    let openId4VciConfigurations: [VciConfig]
+    if let localIssuerUrl = configLogic.localIssuerUrl?.absoluteString {
+      openId4VciConfigurations = hostedConfigurations + [
         .init(
           config: .init(
             credentialIssuerURL: localIssuerUrl,
@@ -168,7 +124,9 @@ struct WalletKitConfigImpl: WalletKitConfig {
           order: 2
         )
       ]
-    }()
+    } else {
+      openId4VciConfigurations = hostedConfigurations
+    }
 
     return openId4VciConfigurations.reduce(
       into: [String: VciConfig]()
@@ -298,7 +256,7 @@ struct WalletKitConfigImpl: WalletKitConfig {
             numberOfCredentials: 1
           ),
           DocumentTypeIdentifier.sdJwtPid: DocumentIssuanceRule(
-            policy: .oneTimeUse,
+            policy: .rotateUse,
             numberOfCredentials: 1
           )
         ],
@@ -322,7 +280,7 @@ struct WalletKitConfigImpl: WalletKitConfig {
             numberOfCredentials: 1
           ),
           DocumentTypeIdentifier.sdJwtPid: DocumentIssuanceRule(
-            policy: .oneTimeUse,
+            policy: .rotateUse,
             numberOfCredentials: 1
           )
         ],
@@ -337,6 +295,35 @@ struct WalletKitConfigImpl: WalletKitConfig {
 }
 
 private extension WalletKitConfigImpl {
+  var issuerConfigurations: [IssuerConfiguration] {
+    let defaults: [IssuerConfiguration]
+
+    switch configLogic.appBuildVariant {
+    case .DEMO:
+      defaults = [
+        .init(credentialIssuerURL: "https://issuer.test.instech-eudi-poc.com", order: 1),
+        .init(credentialIssuerURL: "https://issuer-api.test.instech-eudi-poc.com", order: 0),
+      ]
+    case .DEV:
+      defaults = [
+        .init(credentialIssuerURL: "https://127.0.0.1:5002", order: 1),
+        .init(credentialIssuerURL: "https://127.0.0.1:5003", order: 0),
+      ]
+    }
+
+    let configuredUrls = [
+      "Issuer Frontend Url".optionalValueFromBundle,
+      "Issuer Backend Url".optionalValueFromBundle,
+    ]
+
+    return zip(configuredUrls, defaults).map { configuredUrl, defaultConfiguration in
+      IssuerConfiguration(
+        credentialIssuerURL: configuredUrl ?? defaultConfiguration.credentialIssuerURL,
+        order: defaultConfiguration.order
+      )
+    }
+  }
+
   func loadCertificate(_ name: String) -> SecCertificate? {
     guard let data = Data(name: name, ext: "der") else { return nil }
     return SecCertificateCreateWithData(nil, data as CFData)

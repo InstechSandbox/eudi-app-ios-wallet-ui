@@ -1,5 +1,7 @@
 BUILD_TYPE = DEBUG
 BUILD_VARIANT = DEMO
+ISSUER_FRONTEND_URL = https://issuer.test.instech-eudi-poc.com
+ISSUER_BACKEND_URL = https://issuer-api.test.instech-eudi-poc.com
 CHANGELOG_URL =  https:/$()/github.com/eu-digital-identity-wallet/eudi-app-ios-wallet-ui/releases
 LOCAL_ISSUER_CLIENT_ID =
 LOCAL_ISSUER_URL =

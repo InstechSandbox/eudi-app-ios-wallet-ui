@@ -1,4 +1,4 @@
-# Building the Reference apps to interact with issuing and verifying services.
+# Building the Reference apps to interact with issuing and verifying services
 
 ## Table of contents
 
@@ -11,24 +11,33 @@
 
 This guide aims to assist developers in building the application.
 
-# Setup Apps
+## Setup Apps
 
 ## EUDI iOS Wallet reference application
 
-You need [xcode](https://xcodereleases.com/) and its associated tools installed on your machine. We recommend the latest non-beta version. 
+You need [xcode](https://xcodereleases.com/) and its associated tools installed on your machine. We recommend the latest non-beta version.
 
 Clone the [iOS repository](https://github.com/eu-digital-identity-wallet/eudi-app-ios-wallet-ui)
 
 Open the project file in Xcode. The application has two schemes: "EUDI Wallet Dev" and "EUDI Wallet Demo".
 
-- EUDI Wallet Dev: This target communicates with the services deployed in an environment based on the latest main branch.
-- EUDI Wallet Demo: This target communicates with the services deployed in the latest stable environment.
+* EUDI Wallet Dev: This target communicates with the services deployed in an environment based on the latest main branch.
+* EUDI Wallet Demo: This target communicates with the services deployed in the latest stable environment.
 
+For the Instech cloud-build workflow, interpret those variants as the intended local-versus-cloud split:
+
+* `Dev`: local engineering build used from Xcode for the non-tester path
+* `Demo`: shared cloud tester build intended for the public `test.instech-eudi-poc.com` issuer and verifier path, including TestFlight publication
+
+The two variants should remain visually distinguishable on-device:
+
+* `Dev` installs as `EUDI Wallet Local`
+* `Demo` installs as `EUDI Wallet Test`
 
 Each scheme has two configurations: Debug and Release.
 
-- Debug: Used when running the app from within Xcode.
-- Release: Used when running the app after it has been distributed via a distribution platform, currently TestFlight.
+* Debug: Used when running the app from within Xcode.
+* Release: Used when running the app after it has been distributed via a distribution platform, currently TestFlight.
 
 This setup results in a total of four configurations. All four configurations are defined in the xcconfig files located under the Config folder in the project.
 
@@ -40,12 +49,27 @@ To run the app on a device, follow similar steps to running it on the simulator.
 
 The app is configured to the type (debug/release) and variant (dev/demo) in the four xcconfig files. These are the contents of the xcconfig file, and you don't need to change anything if you don't want to:
 
-```
+```ini
 BUILD_TYPE = RELEASE
 BUILD_VARIANT = DEMO
 ```
 
 The values defined in the `.xcconfig` files are utilized within instances of `WalletKitConfig` and `RQESConfig` to assign the appropriate configurations. These configurations are selected based on the specified build type and build variant defined in the `.xcconfig` files.
+
+Reader and verifier behavior is environment-specific, not only distribution-specific:
+
+* local document-reader and verifier testing should stay on the `Dev` variant because its bundle identifier and app name are reserved for the local path
+* cloud document-reader and verifier testing should stay on the `Demo` variant because that is the tester-facing path that should align with TestFlight and the public verifier or issuer hosts
+* mixing a local reader flow with the cloud build, or a cloud reader flow with the local build, is expected to fail even when the wallet itself installs correctly
+
+The iOS wallet now reads its issuer hosts from the tracked variant xcconfig files through `Wallet.plist`, and `Modules/logic-core/Sources/Config/WalletKitConfig.swift` consumes those values. In this workspace that means:
+
+* `Dev` defaults to the local issuer frontend and backend URLs (`https://127.0.0.1:5002` and `https://127.0.0.1:5003`)
+* `Demo` defaults to the public cloud issuer frontend and backend URLs (`https://issuer.test.instech-eudi-poc.com` and `https://issuer-api.test.instech-eudi-poc.com`)
+
+If you need the `Dev` variant on a physical device instead of the simulator, create a local untracked `Wallet/Config/WalletLocalOverrides.xcconfig` file and override `ISSUER_FRONTEND_URL` and `ISSUER_BACKEND_URL` there with your current LAN host. That avoids committing a machine-specific IP address into the repo.
+
+Remote verifier flows still depend on the actual verifier URL opened in Safari or scanned from a QR code, so operators still need to use the matching local verifier page for `Dev` and the matching public verifier page for `Demo`.
 
 Instances of `ConfigLogic` are responsible for interpreting the raw string values extracted from the `.xcconfig` files and converting them into appropriate data types.
 
@@ -104,6 +128,7 @@ In this example, the `vciConfig` property dynamically assigns configurations, su
 ### Running with local services
 
 The first step is to run all three services locally on your machine. You can follow these Repositories for further instructions:
+
 * [Issuer](https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py)
 * [Web Verifier UI](https://github.com/eu-digital-identity-wallet/eudi-web-verifier)
 * [Web Verifier Endpoint](https://github.com/eu-digital-identity-wallet/eudi-srv-web-verifier-endpoint-23220-4-kt)
